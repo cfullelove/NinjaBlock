@@ -2,15 +2,19 @@
 
 require( "vendor/autoload.php" );
 
+// Create the event loop;
 $loop = \React\EventLoop\Factory::create();
 
+// Create the NinaBlock Client
 $client = new NinjaBlock\Client( '1012CF013284', "7d1d2b25-d476-4535-8f76-9b54c3aae32f" );
 
+// Register a Network Device
 $client->registerDevice( new NinjaBlock\NetworkDevice() );
 
+// Build the DNode and associate with the NinjaBlock ClientHandler
 $dnode = new DNode\DNode($loop, new NinjaBlock\ClientHandler( $client ) );
 
-//$dnode->connect("vps2.rednesstech.com", 4444, function($remote, $connection) use ($loop, $client) {
+// Connect to ninacloud - currently via stunnel
 $dnode->connect("vps2.rednesstech.com", 4444, function($remote, $connection) use ($loop, $client) {
 	
 	printf( "Connected to Ninja Cloud\n" );
