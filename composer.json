@@ -1,0 +1,10 @@
+{
+	"require": {
+		"dnode/dnode" : "0.1.2"
+		},
+	"autoload": {
+        "psr-0": {
+            "NinjaBlock": "src"
+        }
+    }
+}
