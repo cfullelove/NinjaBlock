@@ -2,20 +2,25 @@
 
 require( "vendor/autoload.php" );
 
+/**
+	Set you block ID here
+**/
+$block_id = '1012CF013284';
+
 // Create the event loop;
 $loop = \React\EventLoop\Factory::create();
 
 // Create the NinaBlock Client
-$client = new NinjaBlock\Client( '1012CF013284', "7d1d2b25-d476-4535-8f76-9b54c3aae32f" );
+$client = new NinjaBlock\Client( $block_id );
 
 // Register a Network Device
 $client->registerDevice( new NinjaBlock\NetworkDevice() );
 
 // Build the DNode and associate with the NinjaBlock ClientHandler
-$dnode = new DNode\DNode($loop, new NinjaBlock\ClientHandler( $client ) );
+$dnode = new NinjaBlock\TLSDNode( $loop, new NinjaBlock\ClientHandler( $client ) );
 
-// Connect to ninacloud - currently via stunnel
-$dnode->connect("vps2.rednesstech.com", 4444, function($remote, $connection) use ($loop, $client) {
+// Connect to ninacloud
+$dnode->connect("zendo.ninja.is", 443, function($remote, $connection) use ($loop, $client) {
 	
 	printf( "Connected to Ninja Cloud\n" );
 
@@ -35,7 +40,7 @@ $dnode->connect("vps2.rednesstech.com", 4444, function($remote, $connection) use
 		$remote->handshake( $client->getParams(), $client->getToken(), function( $err, $res ) use ($connection) {
 			if ( $err !== null )
 			{
-				throw Exception( "Failed to handshake: %s", var_export( $err, true ) );
+				throw new Exception( sprintf( "Failed to handshake: %s", var_export( $err, true ) ) );
 			}
 			$connection->emit( "up", array( $res ) );
 		});
@@ -49,21 +54,21 @@ $dnode->connect("vps2.rednesstech.com", 4444, function($remote, $connection) use
 	else
 	{
 		printf( "We need a token, waiting for activation, use id: %s\n", $client->getParams()->id );
-		$remote->activate( $params, function( $err, $auth ) use ($client, $remote, $connection) {
+		$remote->activate( $client->getParams(), function( $err, $auth ) use ($client, $remote, $connection) {
 			
 			if ( $err !== null )
-			{
-				throw Exception( "Failed to activate: %s", var_export( $err, true ) );
-			}
+				throw new Exception( sprintf( "Failed to activate: %s", var_export( $err, true ) ) );
 
 			$client->setToken( $auth->token );
+
+			$params = $client->getParams();
+			$params->token = $auth->token;
 			
-			printf( "Received new token: %s\n", $client->getToken() );
-			$remote->confirmActivation( $client->params, function( $err ) use ($connection) {
+			printf( "Received new token: %s\n", $auth->token );
+			$remote->confirmActivation( $params, function( $err ) use ($connection) {
+
 				if ( $err !== null )
-				{
-					throw Exception( "Failed to confirm activation: %s", var_export( $err, true ) );
-				}
+					throw new Exception( sprintf( "Failed to confirm activation: %s", var_export( $err, true ) ) );
 
 				printf( "Activation confirmed" );
 				$connection->emit( 'handshake', array() );

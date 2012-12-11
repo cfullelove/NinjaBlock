@@ -7,10 +7,10 @@ class Client
 	private $devices = array();
 	private $remote, $params;
 	private $token;
+	private $token_file;
 
-	function __construct( $id, $token = null )
+	function __construct( $id )
 	{
-		$this->token = $token;
 		$this->params = (object) array(
 			"client" => 'cfullelovePHPblock',
 			"id" => $id,
@@ -24,6 +24,14 @@ class Client
 					)
 				)
 			);
+
+		$this->token_file = dirname(__FILE__).'/../../ninja.token';
+
+		if ( file_exists( $this->token_file ) )
+			$this->token = file_get_contents( $this->token_file );
+		else
+			$this->token = null;
+
 	}
 
 	function getParams()
@@ -45,9 +53,15 @@ class Client
 
 	function setToken( $token )
 	{
+		if ( $token == false )
+		{
+			unlink( $this->token_file );
+		}
+
 		if ( $token != null && $token != "" )
 		{
 			$this->token = $token;
+			return file_put_contents( $this->token_file, $token );
 		}
 	}
 

@@ -1,6 +1,7 @@
 {
 	"require": {
-		"dnode/dnode" : "0.1.2"
+		"dnode/dnode" : "0.1.2",
+		"monolog/monolog" : "1.2.1"
 		},
 	"autoload": {
         "psr-0": {

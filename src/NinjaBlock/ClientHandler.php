@@ -13,7 +13,8 @@ class ClientHandler
 
 	function revokeCredentials()
 	{
-		echo "revoke!";
+		printf( "Revoking token!" );
+		$this->client->setToken( false );
 	}
 
 	function execute( $command, $fn )
