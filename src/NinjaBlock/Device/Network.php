@@ -1,10 +1,14 @@
 <?php
 
-namespace NinjaBlock;
+/**
+ * Network device - this device is required by NinjaCloud
+ */
 
-use NinjaBlock\Device;
+namespace NinjaBlock\Device;
 
-class NetworkDevice extends Device
+use NinjaBlock\Device\BaseDevice;
+
+class Network extends BaseDevice
 {
 	function __construct()
 	{
@@ -26,6 +30,11 @@ class NetworkDevice extends Device
 				break;
 		}
 		return true;
+	}
+
+	function getState()
+	{
+		return;
 	}
 
 	function SCAN( $id )

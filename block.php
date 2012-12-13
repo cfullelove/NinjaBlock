@@ -10,11 +10,28 @@ $block_id = '1012CF013284';
 // Create the event loop;
 $loop = \React\EventLoop\Factory::create();
 
+use NinjaBlock\Device as NinjaDevice;
+
 // Create the NinaBlock Client
 $client = new NinjaBlock\Client( $block_id );
 
 // Register a Network Device
-$client->registerDevice( new NinjaBlock\NetworkDevice() );
+$client->registerDevice( new NinjaDevice\Network() );
+$client->registerDevice( new NinjaDevice\RGBLED() );
+
+$temp = new NinjaDevice\Temperature();
+$loop->addPeriodicTimer( 5, function() use ($temp) {
+	$temp->jiggle();
+	$temp->emit( 'data', array( $temp->getState() ) );
+});
+$client->registerDevice( $temp );
+
+$gps = new NinjaDevice\Location();
+$loop->addPeriodicTimer( 5, function() use ($gps) {
+	$gps->jiggle();
+	$gps->emitState();
+});
+$client->registerDevice( $gps );
 
 // Build the DNode and associate with the NinjaBlock ClientHandler
 $dnode = new NinjaBlock\TLSDNode( $loop, new NinjaBlock\ClientHandler( $client ) );

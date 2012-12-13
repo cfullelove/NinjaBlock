@@ -2,6 +2,8 @@
 
 namespace NinjaBlock;
 
+use NinjaBlock\Device\BaseDevice;
+
 class Client
 {
 	private $devices = array();
@@ -70,11 +72,11 @@ class Client
 		$this->remote = $remote;
 		foreach( $this->devices as $device )
 		{
-			$device->emit( 'data', array( new \stdclass() ) );
+			$device->emit( 'data', array( $device->getState() ) );
 		}
 	}
 
-	function registerDevice( $device )
+	function registerDevice( BaseDevice $device )
 	{
 		$that = $this;
 		$device->guid = $this->buildDeviceGuid( $device );

@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * ClientHandler class - this class handles the function calls made by NinjaCloud
+ */
+
 namespace NinjaBlock;
 
 class ClientHandler
