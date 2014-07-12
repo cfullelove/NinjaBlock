@@ -11,13 +11,17 @@ class TLSDNode extends DNode
 
 	private $loop;
     private $protocol;
+    private $connection;
 
 	public function __construct( LoopInterface $loop, $wrapper = null )
 	{
 		$this->loop = $loop;
 
         $wrapper = $wrapper ?: new \StdClass();
+
         $this->protocol = new \DNode\Protocol($wrapper);
+
+        $this->connection = null;
 
         parent::__construct( $loop, $wrapper );
 	}
@@ -39,7 +43,12 @@ class TLSDNode extends DNode
             throw new \RuntimeException("No connection to DNode server in tcp://{$params['host']}:{$params['port']}");
         }
 
-        $conn = new TLSConnection($client, $this->loop);
-        $this->handleConnection($conn, $params);
+        $this->connection = new TLSConnection($client, $this->loop);
+        $this->handleConnection($this->connection, $params);
 	}
+
+    public function getConnection()
+    {
+        return $this->connection;
+    }
 }

@@ -2,97 +2,52 @@
 
 require( "vendor/autoload.php" );
 
-/**
-	Set you block ID here
-**/
-$block_id = '1012CF013284';
+
+if ( ! isset( $argv[1] ) )
+	die( "You need to set a block id! (arg 1)");
+
+$block_id = $argv[1];
+
+if ( isset( $argv[2] ) )
+{
+	$writeCmd = $argv[2];
+}
+else
+{
+	$writeCmd = false;
+}
 
 // Create the event loop;
 $loop = \React\EventLoop\Factory::create();
 
-use NinjaBlock\Device as NinjaDevice;
-
 // Create the NinaBlock Client
 $client = new NinjaBlock\Client( $block_id );
 
-// Register a Network Device
-$client->registerDevice( new NinjaDevice\Network() );
-$client->registerDevice( new NinjaDevice\RGBLED() );
-
-$temp = new NinjaDevice\Temperature();
-$loop->addPeriodicTimer( 5, function() use ($temp) {
-	$temp->jiggle();
-	$temp->emit( 'data', array( $temp->getState() ) );
-});
-$client->registerDevice( $temp );
-
-$gps = new NinjaDevice\Location();
-$loop->addPeriodicTimer( 5, function() use ($gps) {
-	$gps->jiggle();
-	$gps->emitState();
-});
-$client->registerDevice( $gps );
-
-// Build the DNode and associate with the NinjaBlock ClientHandler
-$dnode = new NinjaBlock\TLSDNode( $loop, new NinjaBlock\ClientHandler( $client ) );
-
-// Connect to ninacloud
-$dnode->connect("zendo.ninja.is", 443, function($remote, $connection) use ($loop, $client) {
-	
-	printf( "Connected to Ninja Cloud\n" );
-
-	$connection->on( "up", function( $remote ) use ( $connection, $loop, $client ) {
-
-		// give our client a remote
-		$client->setRemote( $remote );
-
-		// setup the heartbeat
-		$loop->addPeriodicTimer( 2, function() use ($remote, $client ) {
-			printf( "Sending Heartbeat....\n" );
-			call_user_func( $remote->heartbeat, $client->get_heartbeat() );
-		});
-	});
-
-	$connection->on( 'handshake', function () use ($remote, $connection, $client) {
-		$remote->handshake( $client->getParams(), $client->getToken(), function( $err, $res ) use ($connection) {
-			if ( $err !== null )
-			{
-				throw new Exception( sprintf( "Failed to handshake: %s", var_export( $err, true ) ) );
-			}
-			$connection->emit( "up", array( $res ) );
-		});
-	});
-
-	if ( $client->getToken() !== false )
+$client->on( 'write', function( $command ) use ($writeCmd) {
+	printf( "recvData: %s\n", json_encode( $command ) );
+	if ( $writeCmd !== false )
 	{
-		printf( "We have a token, time to handshake\n");
-		$connection->emit( 'handshake', array() );
+		$cmd = sprintf( "echo '%s' | %s", json_encode( $command ), $writeCmd );
+		//echo $cmd . PHP_EOL;
+		echo shell_exec( $cmd );
 	}
-	else
-	{
-		printf( "We need a token, waiting for activation, use id: %s\n", $client->getParams()->id );
-		$remote->activate( $client->getParams(), function( $err, $auth ) use ($client, $remote, $connection) {
-			
-			if ( $err !== null )
-				throw new Exception( sprintf( "Failed to activate: %s", var_export( $err, true ) ) );
+});
 
-			$client->setToken( $auth->token );
+$block = new NinjaBlock\Block( $loop, $client );
 
-			$params = $client->getParams();
-			$params->token = $auth->token;
-			
-			printf( "Received new token: %s\n", $auth->token );
-			$remote->confirmActivation( $params, function( $err ) use ($connection) {
+$readStream = new NinjaBlock\Stream( fopen( 'php://stdin', 'r' ), $loop );
+$writeStream = new \React\Stream\Stream( fopen( 'php://stdout', 'w' ), $loop );
 
-				if ( $err !== null )
-					throw new Exception( sprintf( "Failed to confirm activation: %s", var_export( $err, true ) ) );
+$block->setReadStream( $readStream );
+$block->setWriteStream( $writeStream );
 
-				printf( "Activation confirmed" );
-				$connection->emit( 'handshake', array() );
-			});
-		});
-	
-	}
+$block->connect();
+
+$loop->addPeriodicTimer( 300, function() use ($block) {
+	printf( "Exiting...\n");
+	//$block->reconnect();
+	$block->disconnect();
+	exit();
 });
 
 $loop->run();

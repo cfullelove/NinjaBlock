@@ -4,7 +4,7 @@ namespace NinjaBlock;
 
 use NinjaBlock\Device\BaseDevice;
 
-class Client
+class Client extends \Evenement\EventEmitter
 {
 	private $devices = array();
 	private $remote, $params;
