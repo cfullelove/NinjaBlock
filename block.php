@@ -2,6 +2,10 @@
 
 require( "vendor/autoload.php" );
 
+// create a log channel
+$log = new \Monolog\Logger('NinjaBlock');
+$log->pushHandler(new Monolog\Handler\StreamHandler('php://stdout', \Monolog\Logger::INFO));
+
 
 if ( ! isset( $argv[1] ) )
 	die( "You need to set a block id! (arg 1)");
@@ -23,32 +27,46 @@ $loop = \React\EventLoop\Factory::create();
 // Create the NinaBlock Client
 $client = new NinjaBlock\Client( $block_id );
 
-$client->on( 'write', function( $command ) use ($writeCmd) {
-	printf( "recvData: %s\n", json_encode( $command ) );
-	if ( $writeCmd !== false )
-	{
-		$cmd = sprintf( "echo '%s' | %s", json_encode( $command ), $writeCmd );
-		//echo $cmd . PHP_EOL;
-		echo shell_exec( $cmd );
-	}
-});
-
 $block = new NinjaBlock\Block( $loop, $client );
 
-$readStream = new NinjaBlock\Stream( fopen( 'php://stdin', 'r' ), $loop );
-$writeStream = new \React\Stream\Stream( fopen( 'php://stdout', 'w' ), $loop );
+$mqtt = new NinjaBlock\MQTTClient("dns.lan", 1883, "NinjaBlock", $loop);
+
+addLogger( $client, $log );
+addLogger( $block, $log );
+addLogger( $mqtt, $log );
+
+$readStream = new \React\Stream\ThroughStream();
+$writeStream = new \React\Stream\ThroughStream();
 
 $block->setReadStream( $readStream );
 $block->setWriteStream( $writeStream );
 
-$block->connect();
-
-$loop->addPeriodicTimer( 300, function() use ($block) {
-	printf( "Exiting...\n");
-	//$block->reconnect();
-	$block->disconnect();
-	exit();
+$mqtt->on( 'connect', function() use ($mqtt, $readStream, $block_id) {
+	$mqtt->log( 'info', "MQTT Connected" );
+	$topic = sprintf( "RedNinja/%s/read", $block_id );
+	$mqtt->log( 'info', "Subscribing: " . $topic );
+	$mqtt->subscribe([
+		$topic => ["qos" => 0 ]
+	]);
 });
+
+$mqtt->on( 'message', function( $topic, $message) use ( $readStream ) {
+	$readStream->write( $message );
+});
+
+$mqtt->on( 'timeout', function( ) { echo "TIMEOUT" .PHP_EOL; });
+
+$client->on( 'write', function( $command ) use ($mqtt, $block_id) {
+	$mqtt->log( "debug", "Publishing: " . json_encode( $command ) );
+	$mqtt->publish( sprintf( "RedNinja/%s/write", $block_id ), json_encode( $command ) );
+});
+
+$block->on( 'connect', function() use ($mqtt) {
+	if ( ! $mqtt->isConnected() )
+		$mqtt->connect();
+});
+
+$block->connect();
 
 $loop->run();
 

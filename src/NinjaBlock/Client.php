@@ -90,7 +90,7 @@ class Client extends \Evenement\EventEmitter
 			$that->sendData( $d );
 		});
 
-		printf( "Registered: %s\n", $device->guid );
+		$this->log( 'info', sprintf( "Registered: %s\n", $device->guid ) );
 		$this->devices[ $device->guid ] = $device;
 	}
 
@@ -117,12 +117,8 @@ class Client extends \Evenement\EventEmitter
 		{
 			$data['TIMESTAMP'] = time()*1000;
 			$data = array( "DEVICE" => array($data) );
-			call_user_func( $this->remote->data, $data );
-			printf( "sendData: %s\n", json_encode( $data ) );
-		}
-		else
-		{
-			printf( "No remote!\n" );
+			$this->log( "debug", "Sent Data: " . json_encode( $data ) );
+			return call_user_func( $this->remote->data, $data );
 		}
 	}
 
@@ -132,6 +128,10 @@ class Client extends \Evenement\EventEmitter
 			"NODE_ID" => $this->params->id,
 	        "TIMESTAMP" => time() * 1000,
 	        "DEVICE" => array() );
+	}
+
+	private function log( $level, $message ) {
+		$this->emit( 'log', array( $level, $message ) );
 	}
 
 }

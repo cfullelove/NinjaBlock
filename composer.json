@@ -1,11 +1,14 @@
 {
 	"require": {
-		"dnode/dnode" : "0.1.2",
-		"monolog/monolog" : "1.2.1"
+		"dnode/dnode" : "0.2.*",
+		"monolog/monolog" : "*"
 		},
 	"autoload": {
         "psr-0": {
             "NinjaBlock": "src"
-        }
+        },
+        "files": [
+        	"src/functions.php"
+        ]
     }
 }
